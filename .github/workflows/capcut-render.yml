@@ -1,0 +1,43 @@
+name: CapCut Render
+
+on:
+  repository_dispatch:
+    types: [capcut-render]
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: write
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: |
+          npm ci || npm install
+          # puppeteer-core is used; use system chrome on runners
+          npm install puppeteer-core node-fetch
+
+      - name: Install chrome for puppeteer
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y wget gnupg --no-install-recommends
+          wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | sudo apt-key add -
+          sudo sh -c 'echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google-chrome.list'
+          sudo apt-get update
+          sudo apt-get install -y google-chrome-stable
+
+      - name: Run CapCut automation
+        env:
+          CAPCUT_EMAIL: ${{ secrets.CAPCUT_EMAIL }}
+          CAPCUT_PASSWORD: ${{ secrets.CAPCUT_PASSWORD }}
+          CHROME_EXEC: /usr/bin/google-chrome-stable
+        run: |
+          node capcut-automate.js
